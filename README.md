@@ -16,14 +16,14 @@ urlpatterns = [
 ]
 ```
 
-To specify which products will be exosed, add the following line.  If this is not add
-you will get an error:
+To specify which products will be exosed, add the following line to webcrm/settings.py file.
+If this is not add you will get an error:
 ```python
 PUBLIC_PRODUCTS=[1,2,5,8,11,14]
 ```
 
-```python
 For better logging, add the following to webcrm/settings.py:
+```python
 LOGGING = {
     'version': 1,
     'handlers': {
