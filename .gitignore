@@ -1,3 +1,13 @@
 # Ignore setuptools build metadata
+*.pyc
+__pycache__/
+*.sqlite3
+*.log
+*.env
 *.egg-info/
+dist/
+build/
+.env
+venv/
+.DS_Store
 
