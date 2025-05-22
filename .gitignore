@@ -1,0 +1,3 @@
+# Ignore setuptools build metadata
+*.egg-info/
+
