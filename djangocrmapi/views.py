@@ -2,10 +2,11 @@ from rest_framework import generics
 from rest_framework.response import Response
 from crm.models.product import Product  # Update with actual path
 from .serializers import ProductSerializer
+from django.config import settings
 import json
 
 class ProductListView(generics.ListAPIView):
-    queryset = Product.objects.filter(id__in=[1,2,5,8,11,14])
+    queryset = Product.objects.filter(id__in=settings.PUBLIC_PRODUCTS)
     serializer_class = ProductSerializer
 
     def list(self, request, *args, **kwargs):
@@ -17,5 +18,5 @@ class ProductListView(generics.ListAPIView):
 
 
 class ProductDetailView(generics.RetrieveAPIView):
-    queryset = Product.objects.filter(id__in=[1,2,5,8,11,14])
+    queryset = Product.objects.filter(id__in=settings.PUBLIC_PRODUCTS)
     serializer_class = ProductSerializer
