@@ -2,7 +2,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from crm.models.product import Product  # Update with actual path
 from .serializers import ProductSerializer
-from django.config import settings
+from django.conf import settings
 import json
 
 class ProductListView(generics.ListAPIView):
