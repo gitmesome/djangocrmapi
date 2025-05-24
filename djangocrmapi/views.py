@@ -12,8 +12,8 @@ class ProductListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
-        #json_data = json.dumps(serializer.data)
-        json_data = serializer.data
+        json_data = json.dumps(serializer.data)
+        # json_data = serializer.data
         return Response(json_data, content_type='application/json')
 
 
