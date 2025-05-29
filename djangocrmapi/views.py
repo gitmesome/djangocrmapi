@@ -145,15 +145,21 @@ class CustomerFormView(APIView):
         #    serializer.validated_data["recaptcha_token"], 'submit_form'
         #)
 
-        # Step 2: Process form
-        #validated = serializer.validated_data
-        #return Response({"message": "Form submitted successfully"}, status=status.HTTP_201_CREATED)
-        # Save to DB
         instance = serializer.save()
+        try:
+            instance = serializer.save()
+        except (IntegrityError, Exception) as e:
+            logger.exception("Failed to save CustomerFormSubmission: %s", e)
+            print(f"Failed to save CustomerFormSubmission: {e}")
+            return Response({"detail": f"submission failed: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
 
+        # Success response
         return Response(
-            {"message": "Form submitted successfully", "id": instance.id},
+            # hold for debugging but we not need to tell the world private info
+            # {"message": "Form submitted successfully", "id": instance.id},
+             {"message": "Form submitted successfully"},
             status=status.HTTP_201_CREATED
         )
 
+        return Response({"redirect": "/thank-you"}, status=status.HTTP_302_FOUND)
 
