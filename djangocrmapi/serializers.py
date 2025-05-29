@@ -1,6 +1,8 @@
 from rest_framework import serializers
+from .models import CustomerFormSubmission
 from crm.models.product import Product  # Update with actual path
 import re
+import bleach
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,18 +12,30 @@ class ProductSerializer(serializers.ModelSerializer):
             'product_category', 'on_sale', 'type'
         ]
 
-class CustomerFormSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=100)
-    last_name = serializers.CharField(max_length=100)
-    email = serializers.EmailField()
+class CustomerFormSerializer(serializers.ModelSerializer):
+    recaptcha_token = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = CustomerFormSubmission
+        fields = [
+            'first_name', 'last_name', 'email', 'phone', 'address', 'city',
+            'state', 'zip', 'lat', 'lng', 'job_type', 'message', 'service_date',
+            'recaptcha_token'
+        ]
+
+    # Optional: extra validation for phone and zip formats
     phone = serializers.RegexField(regex=r'^\(\d{3}\) \d{3}-\d{4}$')
-    address = serializers.CharField()
-    city = serializers.CharField()
-    state = serializers.CharField()
     zip = serializers.RegexField(regex=r'^\d{5}(-\d{4})?$')
-    lat = serializers.FloatField()
-    lng = serializers.FloatField()
-    job_type = serializers.CharField()
-    message = serializers.CharField(allow_blank=True, required=False)
-    service_date = serializers.DateField()
+    service_date = serializers.DateTimeField(
+        format="%Y-%m-%d",
+        input_formats=['%Y-%m-%d', '%m/%d/%Y', '%Y-%m-%dT%H:%M:%S.%fZ']
+    )
+
+    def validate_message(self, value):
+        return bleach.clean(value, tags=[], strip=True)
+
+    def create(self, validated_data):
+        validated_data.pop('recaptcha_token', None)
+        return CustomerFormSubmission.objects.create(**validated_data)
+    
 

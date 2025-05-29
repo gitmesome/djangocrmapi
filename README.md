@@ -22,6 +22,18 @@ If this is not add you will get an error:
 PUBLIC_PRODUCTS=[1,2,5,8,11,14]
 ```
 
+Please run the migration:
+```
+# 1. Make sure your app is added to INSTALLED_APPS in settings.py
+
+# 2. Create migrations
+python manage.py makemigrations djangocrmapi
+
+# 3. Apply the migration
+python manage.py migrate
+
+```
+
 For better logging, add the following to webcrm/settings.py:
 ```python
 LOGGING = {
