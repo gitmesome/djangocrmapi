@@ -158,8 +158,13 @@ class CustomerFormView(APIView):
             return Response({"detail": f"submission failed: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
 
         # lets move this into django-crm:
+        try:
+            product = Product.objects.get(id=serializer.validated_data['job_type'])
+        except Product.DoesNotExist as e:
+            return Response({"detail": f"failed to lookup product: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
         whole_name = f"{serializer.validated_data['first_name']} {serializer.validated_data['last_name']}"
-        subject = f"job id: {serializer.validated_data['job_type']} for - {whole_name}"
+        company = f"{whole_name} {serializer.validated_data['zip']}"
+        subject = f"prod id: {product.id}, prod name: {product.name} for - {whole_name}"
         request = HttpRequest()
         request.method = 'POST'
         request.POST = {
@@ -167,7 +172,7 @@ class CustomerFormView(APIView):
             'email': serializer.validated_data["email"],
             'subject': subject,
             'phone': serializer.validated_data["phone"],
-            'company': whole_name,
+            'company': company,
             'message': f"{all_but_recaptcha}",
             'country': "USA",
             'city': serializer.validated_data["city"],
