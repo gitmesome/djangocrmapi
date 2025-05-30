@@ -1,9 +1,13 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from crm.models.product import Product  # Update with actual path
+from crm.models.product import Product # Update with actual path
+from crm.models import LeadSource
+from crm.forms.contact_form import ContactForm
+from crm.utils.create_form_request import create_form_request
 from .serializers import ProductSerializer, CustomerFormSerializer
 from django.conf import settings
+from django.http import HttpRequest
 import json
 import logging
 import requests
@@ -152,6 +156,34 @@ class CustomerFormView(APIView):
             logger.exception("Failed to save CustomerFormSubmission: %s", e)
             print(f"Failed to save CustomerFormSubmission: {e}")
             return Response({"detail": f"submission failed: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
+
+        # lets move this into django-crm:
+        whole_name = f"{serializer.validated_data['first_name']} {serializer.validated_data['last_name']}"
+        subject = f"job id: {serializer.validated_data['job_type']} for - {whole_name}"
+        request = HttpRequest()
+        request.method = 'POST'
+        request.POST = {
+            'name': whole_name,
+            'email': serializer.validated_data["email"],
+            'subject': subject,
+            'phone': serializer.validated_data["phone"],
+            'company': whole_name,
+            'message': f"{all_but_recaptcha}",
+            'country': "USA",
+            'city': serializer.validated_data["city"],
+            'leadsource_token': '7a50a12f-6c55-4e3f-8304-03e2839a4563',
+        }
+        form = ContactForm(request.POST)
+        if not form.is_valid():
+            return Response({"message": f"Can not create CRM form: {form.errors}"}, status=409)
+
+        data = form.cleaned_data
+        token = str(data['leadsource_token'])
+        try:
+            lead_source = LeadSource.objects.get(uuid=token)
+        except ObjectDoesNotExist:
+            return Response({"message": "No lead source found"}, status=401)
+        create_form_request(lead_source, form)
 
         # Success response
         return Response(
