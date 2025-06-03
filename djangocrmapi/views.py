@@ -164,7 +164,7 @@ class CustomerFormView(APIView):
             return Response({"detail": f"failed to lookup product: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
         whole_name = f"{serializer.validated_data['first_name']} {serializer.validated_data['last_name']}"
         company = f"{whole_name} {serializer.validated_data['zip']}"
-        subject = f"prod id: {product.id}, prod name: {product.name} for - {whole_name}"
+        subject = f"Prod name: {product.name} for - {whole_name} - (prod id: {product.id})"
         request = HttpRequest()
         request.method = 'POST'
         request.POST = {
@@ -174,9 +174,9 @@ class CustomerFormView(APIView):
             'phone': serializer.validated_data["phone"],
             'company': company,
             'message': f"{all_but_recaptcha}",
-            'country': "USA",
+            'country': "United States",
             'city': serializer.validated_data["city"],
-            'leadsource_token': '7a50a12f-6c55-4e3f-8304-03e2839a4563',
+            'leadsource_token': '587e68bf-4715-442f-a1ed-f17a0d98eba8',
         }
         form = ContactForm(request.POST)
         if not form.is_valid():
