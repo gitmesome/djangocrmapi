@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from crm.models.product import Product # Update with actual path
+from crm.models.product import Product  # Update with actual path
 from crm.models import LeadSource
 from crm.forms.contact_form import ContactForm
 from crm.utils.create_form_request import create_form_request
@@ -15,6 +15,7 @@ from google.cloud import recaptchaenterprise_v1
 from google.cloud.recaptchaenterprise_v1 import Assessment
 
 import os
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/app/.recaptcha.json"
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 class ProductListView(generics.ListAPIView):
     if not settings.PUBLIC_PRODUCTS:
-        raise AssertionError('Please set a value for PUBLIC_PRODUCTS in the settings.py file')
+        raise AssertionError(
+            "Please set a value for PUBLIC_PRODUCTS in the settings.py file"
+        )
     queryset = Product.objects.filter(id__in=settings.PUBLIC_PRODUCTS)
     serializer_class = ProductSerializer
 
@@ -31,23 +34,24 @@ class ProductListView(generics.ListAPIView):
         serializer = self.get_serializer(queryset, many=True)
         # json_data = json.dumps(serializer.data)
         json_data = serializer.data
-        return Response(json_data, content_type='application/json')
+        return Response(json_data, content_type="application/json")
 
 
 class ProductDetailView(generics.RetrieveAPIView):
     if not settings.PUBLIC_PRODUCTS:
-        raise AssertionError('Please set a value for PUBLIC_PRODUCTS in the settings.py file')
+        raise AssertionError(
+            "Please set a value for PUBLIC_PRODUCTS in the settings.py file"
+        )
     queryset = Product.objects.filter(id__in=settings.PUBLIC_PRODUCTS)
     serializer_class = ProductSerializer
 
 
 class CustomerFormView(APIView):
     permission_classes = []  # Use IsAuthenticated if this requires login
-    throttle_scope = 'form_submission'
-
+    throttle_scope = "form_submission"
 
     def post(self, request, format=None):
-        # For now, this method is not being used due to key errors, but we 
+        # For now, this method is not being used due to key errors, but we
         # may want it later as it is a copy and paste from google.
         def create_assessment(
             project_id: str, recaptcha_key: str, token: str, recaptcha_action: str
@@ -106,7 +110,9 @@ class CustomerFormView(APIView):
                     + str(response.risk_analysis.score)
                 )
                 # Get the assessment name (id). Use this to annotate the assessment.
-                assessment_name = client.parse_assessment_path(response.name).get("assessment")
+                assessment_name = client.parse_assessment_path(response.name).get(
+                    "assessment"
+                )
                 print(f"Assessment name: {assessment_name}")
             return response
 
@@ -115,8 +121,8 @@ class CustomerFormView(APIView):
                 "https://www.google.com/recaptcha/api/siteverify",
                 data={
                     "secret": settings.GOOGLE_RECAPTCHA_SECRET_KEY,
-                    "response": token
-                }
+                    "response": token,
+                },
             )
             result = r.json()
             if not result.get("success"):
@@ -133,60 +139,76 @@ class CustomerFormView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # Example: log or save data (replace this with model.save() if needed)
-        all_but_recaptcha = {key:value for key, value in serializer.validated_data.items() if key != 'recaptcha_token'}
+        all_but_recaptcha = {
+            key: value
+            for key, value in serializer.validated_data.items()
+            if key != "recaptcha_token"
+        }
         logger.debug("New customer form submitted: %s", all_but_recaptcha)
         print(f"New customer form submitted: {all_but_recaptcha}")
 
-        is_valid, reason = verify_recaptcha(serializer.validated_data["recaptcha_token"])
+        is_valid, reason = verify_recaptcha(
+            serializer.validated_data["recaptcha_token"]
+        )
         if not is_valid:
             return Response({"detail": f"reCAPTCHA failed: {reason}"}, status=400)
 
         # the key is not connecting properly, but scores are being returned from
         # the verification method.  Will resolve later.
         # assessment = create_assessment(
-        #    'junkinator-request-form', #settings.GOOGLE_RECAPTCHA_PROJECT_ID, 
+        #    'junkinator-request-form', #settings.GOOGLE_RECAPTCHA_PROJECT_ID,
         #    settings.GOOGLE_RECAPTCHA_SECRET_KEY,
         #    serializer.validated_data["recaptcha_token"], 'submit_form'
-        #)
+        # )
 
-        instance = serializer.save()
         try:
             instance = serializer.save()
-        except (IntegrityError, Exception) as e:
+        except (CustomerFormSerializer.IntegrityError, Exception) as e:
             logger.exception("Failed to save CustomerFormSubmission: %s", e)
             print(f"Failed to save CustomerFormSubmission: {e}")
-            return Response({"detail": f"submission failed: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
+            return Response(
+                {"detail": f"submission failed: {e}"},
+                status=status.HTTP_424_FAILED_DEPENDENCY,
+            )
 
         # lets move this into django-crm:
         try:
-            product = Product.objects.get(id=serializer.validated_data['job_type'])
+            product = Product.objects.get(id=serializer.validated_data["job_type"])
         except Product.DoesNotExist as e:
-            return Response({"detail": f"failed to lookup product: {e}"}, status=status.HTTP_424_FAILED_DEPENDENCY)
-        whole_name = f"{serializer.validated_data['first_name']} {serializer.validated_data['last_name']}"
-        company = f"{whole_name} {serializer.validated_data['zip']}"
-        subject = f"Prod name: {product.name} for - {whole_name} - (prod id: {product.id})"
+            return Response(
+                {"detail": f"failed to lookup product: {e}"},
+                status=status.HTTP_424_FAILED_DEPENDENCY,
+            )
+        whole_name = f"{instance.first_name} {instance.last_name}"
+        company = f"{whole_name} {instance.zip}"
+        subject = (
+            f"Prod name: {product.name} for - {whole_name} - (prod id: {product.id})"
+        )
         request = HttpRequest()
-        request.method = 'POST'
+        request.method = "POST"
         request.POST = {
-            'name': whole_name,
-            'email': serializer.validated_data["email"],
-            'subject': subject,
-            'phone': serializer.validated_data["phone"],
-            'company': company,
-            'message': f"{all_but_recaptcha}",
-            'country': "United States",
-            'city': serializer.validated_data["city"],
-            'leadsource_token': '587e68bf-4715-442f-a1ed-f17a0d98eba8',
+            "name": whole_name,
+            "email": instance.email,
+            "subject": subject,
+            "phone": instance.phone,
+            "company": company,
+            "message": f"{all_but_recaptcha}",
+            "country": "United States",
+            "city": instance.city,
+            "leadsource_token": "587e68bf-4715-442f-a1ed-f17a0d98eba8",
         }
+
         form = ContactForm(request.POST)
         if not form.is_valid():
-            return Response({"message": f"Can not create CRM form: {form.errors}"}, status=409)
+            return Response(
+                {"message": f"Can not create CRM form: {form.errors}"}, status=409
+            )
 
         data = form.cleaned_data
-        token = str(data['leadsource_token'])
+        token = str(data["leadsource_token"])
         try:
             lead_source = LeadSource.objects.get(uuid=token)
-        except ObjectDoesNotExist:
+        except LeadSource.DoesNotExist:
             return Response({"message": "No lead source found"}, status=401)
         create_form_request(lead_source, form)
 
@@ -194,9 +216,8 @@ class CustomerFormView(APIView):
         return Response(
             # hold for debugging but we not need to tell the world private info
             # {"message": "Form submitted successfully", "id": instance.id},
-             {"message": "Form submitted successfully"},
-            status=status.HTTP_201_CREATED
+            {"message": "Form submitted successfully"},
+            status=status.HTTP_201_CREATED,
         )
 
         return Response({"redirect": "/thank-you"}, status=status.HTTP_302_FOUND)
-
